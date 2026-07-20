@@ -1,0 +1,7 @@
+{
+  "_comment": "Maps an Agent Card 'name' to the provider/model that backs it, for Tier 2 cost estimation (see schema.md). This demo entry does NOT mean the toy Specialist actually calls GPT-4o-mini (it's just .upper() on the input text) — it exists to exercise the real tiktoken pipeline against real visible text so the estimation logic is proven, not just claimed. An agent name absent from this file falls straight to Tier 3 (generic fallback).",
+  "Specialist": {
+    "provider": "openai",
+    "model": "gpt-4o-mini"
+  }
+}

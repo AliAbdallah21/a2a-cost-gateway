@@ -1,0 +1,14 @@
+# Phase 0 dependencies
+a2a-sdk[http-server]==1.1.1
+uvicorn
+httpx
+pytest
+pytest-asyncio
+python-dotenv
+
+# Phase 2 — cost estimation tokenizers (local/offline only; see arch.md's Phase 2
+# notes for why Anthropic and Llama are deferred rather than included here)
+tiktoken==0.13.0
+mistral-common==1.11.6
+google-genai==2.12.1
+sentencepiece==0.2.2

@@ -1,0 +1,6 @@
+{
+  "_comment": "Agent name -> $ budget ceiling, in-memory only (resets on gateway restart — see arch.md's Phase 3 notes). An agent absent from this file has no budget enforced (unlimited). Only meaningful for agents with a real cost signal via Tier 1/2 (see gateway/cost_estimation.py) -- a Tier-3-only agent has no dollar figure to check against and is never budget-gated. Deliberately generous here so the checked-in default doesn't surprise-block the Phase 0/1/2 demos; tests that need to exercise an actual rejection use BUDGET_CONFIG_PATH to point at their own tiny temp config instead of editing this one.",
+  "Specialist": {
+    "budget_usd": 1.0
+  }
+}
