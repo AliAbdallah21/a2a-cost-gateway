@@ -12,6 +12,12 @@ AI agents are starting to delegate work to other AI agents automatically, using 
 
 This project is a reference implementation of a gateway that closes that gap — at the network level, not by requiring agents to adopt a library.
 
+## A real concurrency bug, reproduced and verified — not just claimed
+
+Budget enforcement here can only ever gate on **accumulated past spend**, because a task's own cost isn't knowable until the Specialist has already responded (see Architecture below). That design has a real consequence: nothing serializes the check-forward-record sequence across *concurrent* requests, so the same budget check can pass more than once before any of them has recorded its spend.
+
+This isn't a theoretical concern — it's reproduced deterministically by [`tests/test_budget_race_condition.py`](tests/test_budget_race_condition.py): against an agent budgeted for roughly **one** task's worth of spend, **5 concurrent requests result in 5 allowed and 0 rejected**. Sequentially, the same budget correctly allows exactly 1 and rejects the other 4 — the difference *is* the race. The fix (a per-agent lock or compare-and-set around the check-forward-record sequence) is scoped but not yet implemented; see `arch.md`'s Phase 3 and Phase 5 notes for the full writeup, including why the test is explicitly designed so its assertion is expected to flip (not regress) once that fix lands.
+
 ## Architecture
 
 ```
@@ -102,6 +108,16 @@ python -m pytest tests/ -v
 
 The suite spins up real Specialist/Gateway subprocesses and drives real HTTP traffic through them — there are no mocks of the A2A protocol itself. A couple of tests (`test_gateway_passthrough.py`, `test_cost_estimation.py`, `test_budget_enforcement.py`, `test_budget_race_condition.py`) bind fixed local ports (`9999`, `8080`); make sure nothing else on your machine is using them.
 
+## Known issues / troubleshooting
+
+Two real platform issues came up during development — documented here, and in more detail in `arch.md`, rather than left for you to rediscover:
+
+- **Windows + conda: `SSL_CERT_FILE` points at a path that doesn't exist.** Some conda installs' `activate.sh` sets `SSL_CERT_FILE` to `<env>/ssl/cacert.pem`, but the real bundle on Windows lives at `<env>/Library/ssl/cacert.pem`. If you see `FileNotFoundError` from `ssl.create_default_context` the moment any `httpx` client is constructed, override it explicitly before running anything:
+  ```bash
+  export SSL_CERT_FILE="$(conda info --base)/envs/agent-com/Library/ssl/cacert.pem"
+  ```
+- **Port-release race between consecutive test runs.** `agents.specialist` and `gateway.proxy` bind fixed ports (`9999`, `8080`); on some platforms the OS doesn't release a just-terminated process's port instantly, so back-to-back test runs (or a manual run right after a test run) can occasionally fail to bind with "address already in use." Waiting a second or two and retrying is enough — the test fixtures that run multiple server pairs in the same file already build in a short grace period for this, but it can still surface if you're running things manually in quick succession.
+
 ## Configuration
 
 All runtime configuration is environment variables (`.env`, see `.env.example`) plus a few small JSON files in `gateway/`:
@@ -133,3 +149,11 @@ This project was built incrementally, one phase at a time, with a written design
 - **`design.md`** — the original Phase 0 module-level design
 
 If you're trying to understand *why* something works the way it does — particularly the cost-estimation tiering, the budget "gate on the past, not the future" design, or any of the documented limitations — `arch.md` is the place to look first.
+
+## Feedback
+
+Found a bug, have a fix for the concurrency race above, or have run into this exact problem in your own A2A setup? Open a GitHub Issue or start a Discussion — particularly interested in hearing from anyone who's solved the budget-race problem for real, concurrent traffic.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
